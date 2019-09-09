@@ -1,0 +1,11 @@
+.citygraphs,.citygraphs-btn{
+	float: left;
+}
+.citygraphs-btn{margin-left: 10px;margin-top: -1px;}
+
+.ov-row{width: 100%;}
+.ov-left{float: left; width: 70%}
+.ov-right{float: right;width: 30%}
+.ov-clearfix{clear: both;}
+#ov_map,#ov_bar{height: 400px}
+#ov_line{height: 250px}
