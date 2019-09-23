@@ -92,6 +92,7 @@ function overview_save(){
             $save["tree_id"] = $tree_id;
             $save["local_graph_id"] = $item->local_graph_id;
             $save["region_code"] = $item->region_code;
+            $save["region_url"] = $item->region_url;
             sql_save($save, 'plugin_overview');
         }
     }
@@ -127,16 +128,35 @@ function ajax_graph(){
 function ajax_map(){
     // 1、先查询大屏的使用的图形
     $ret = array();
-    $d = strtotime(date('Y-m-d H:i',time())) - 60;
+    $d = strtotime(date('Y-m-d H:i',time()))-60;
     $local_datas = get_local_data();
     if (cacti_sizeof($local_datas)) {
+        $graph_data_array = array("graph_start"=>$d-300,"graph_end"=>$d,"export_csv"=>true);
+        $xport_meta = array();
         foreach($local_datas as $local_data) {
-            $ref_values = ov_get_ref_value($local_data, $d,60);
-            $local_data["traffic"] = round((empty($ref_values["traffic"]) ? 0 : $ref_values["traffic"]) /1000000000,2);
-            if($local_data["traffic"] == 0){
-                continue;
+            if(empty($local_data["local_data_id"])){ // 说明是聚合图形
+                //cacti_log("聚合图形local_graph_id=".$local_data["local_graph_id"]);
+                $xport_array = rrdtool_function_xport($local_data["local_graph_id"], 0, $graph_data_array, $xport_meta);
+                //cacti_log("得到的结果=".json_encode($xport_array));
+                
+                if (!empty($xport_array["data"])) {
+                    $data = array_values(end($xport_array["data"]));
+                    //cacti_log("data = ".json_encode($data));
+                    $in = $data[sizeof($data)-2];$out = end($data);
+                    //cacti_log("in = $in ,out = $out");
+                    $traffic = $in > $out ? $in : $out;
+                    if(!empty($traffic)){
+                        $ret[] = array("value"=>round($traffic/1000000000,2)
+                            ,"name"=>$local_data["name"],"upper_limit"=>round($local_data["upper_limit"]/1000000000,2));
+                    }
+                }
+            }else{ // 说明是普通图形
+                $ref_values = ov_get_ref_value($local_data, $d,60);
+                if(!empty($ref_values["traffic"])){
+                    $ret[] = array("value"=>round($ref_values["traffic"]/1000000000,2)
+                        ,"name"=>$local_data["name"],"upper_limit"=>round($local_data["upper_limit"]/1000000000,2));
+                }
             }
-            $ret[] = array("value"=>$local_data["traffic"],"name"=>$local_data["name"]);
         }
     }
     array_multisort(array_column($ret,'value'),SORT_DESC,$ret);
@@ -151,7 +171,7 @@ function ajax_line(){
     // 查询有多少个日期
     $insert_times = db_fetch_assoc("select poh.insert_time from plugin_overview po 
             left join plugin_overview_history poh on po.local_graph_id = poh.local_graph_id
-            group by insert_time order by insert_time asc limit 30
+            where insert_time is not null group by insert_time order by insert_time asc limit 30
             ");
     $insert_time_array = array();
     foreach ($insert_times as $insert_time){
@@ -159,7 +179,7 @@ function ajax_line(){
     }
     
     $histoys = db_fetch_assoc("SELECT poh.insert_time,`value`,`region_name` FROM plugin_overview po 
-        LEFT JOIN plugin_overview_history poh ON po.local_graph_id = poh.local_graph_id
+        LEFT JOIN plugin_overview_history poh ON po.local_graph_id = poh.local_graph_id where insert_time is not null
         ORDER BY region_name,insert_time ");
     
     $datas = array();
@@ -173,7 +193,6 @@ function ajax_line(){
             $datas[$histoy["region_name"]] = array($insert_time=>$histoy["value"]);
         }
     }
-    cacti_log("filled before= " . json_encode($datas));
     //cacti_log("all times = " . json_encode($insert_time_array));
     foreach ($datas as $key => $data){
         $my_insert_times = array_keys($data);
@@ -199,6 +218,5 @@ function ajax_line(){
 function overview(){
     global $config;
     include_once($config['base_path'] . '/plugins/overview/include/overview_html.php');
-    $array=array(2,3,4,1,5);
-    cacti_log("index = " . array_search(4, $array));
+    
 }

@@ -73,6 +73,9 @@ $trees = db_fetch_assoc("SELECT id,name FROM graph_tree ORDER BY name");
 				    				<?php } ?>
 									html += '</select>';
 								html += '</div>';
+								html += '<div class="formData">';
+									html += '<input type="text" placeholder="请输入子系统地址" size="50" class="ui-state-default ui-corner-all">';
+								html += '</div>';
 							html += '</div>';
 						html += '</div>';
 						var $h = $(html);
@@ -89,13 +92,15 @@ $trees = db_fetch_assoc("SELECT id,name FROM graph_tree ORDER BY name");
 		$(".cityGraph").each(function(i,v){
 			var local_graph_id = $(v).attr("local_graph_id");
 			var region_code = $(v).find("select").val();
+			var region_url = $(v).find("input").val();
 			if($.inArray(region_code,region_codes) > -1){ // 说明已经选择过该地域的图形
 				return true; // 相当于是 continue 
 			}
 			region_codes.push(region_code);
 			json.push({
 				local_graph_id:local_graph_id,
-				region_code:region_code
+				region_code:region_code,
+				region_url:region_url
 			});
 		});
 		return JSON.stringify(json);

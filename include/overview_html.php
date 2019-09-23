@@ -13,7 +13,7 @@
 	显示曲线图
 </div>
 <script>
-var mapChart,barChart,lineChart;
+var mapChart,barChart,lineChart,myColor=["#2c9a42","#d08a00","#c23c33"];
 $(function(){
 	//初始化echarts实例
     mapChart = echarts.init(document.getElementById('ov_map'));
@@ -41,36 +41,67 @@ function renderMap(){
 		url:"overview.php?action=ajax_map",
 		success: function(data){
 			if(data && data.length > 0){
+				var data_tmp = [];
+				for(var i=0;i<data.length;i++){
+					data_tmp.push({
+						name:data[i].name,
+						value:(data[i].value/data[i].upper_limit*100).toFixed(2),
+						traffic:data[i].value
+					});
+				}
 				// 湖北地图
 				var mapOption = {
 					title:{
-						text:"各地市流量实时统计排名",
+						text:"全省宽带业务流量监控大屏",
 						right:"20%"
 					},
 					tooltip: {
 				        show: true,
 				        formatter: function(params) {
 					        if(params && params.name && params.data){
-		    		            return params.name + '：' + params.data['value'] + 'G'
+		    		            return params.name + '：通道容量' + params.data['value'] + '% ，流量' + params.data['traffic'] + "G"
 						    }
 				        },
 				    },
+				    visualMap: {
+		                type: 'piecewise',
+		                pieces: [{
+		                	lte:80,
+	                        label: '正常',
+	                        color: myColor[0]
+						},{
+							gt: 80,
+							lt: 90,
+	                        label: '告警',
+	                        color: myColor[1]
+						},{
+							gte: 90,
+	                        label: '严重',
+	                        color: myColor[2]
+						}]
+		            },
 			        series: [{
 		            	name: '湖北',
 		                type: 'map',
 		                top:10,
 		                bottom:10,
 		                mapType: 'hubei',
-		                selectedMode : 'multiple',
 		                label: {
 		                    normal: {
-		                        show: true
+		                        show: true,
+		                        formatter: function(params) {
+									return params.name + (params.value ? ("\n" + params.value + "%") : "");
+		                        },
+		                        padding: [2, 2],
+		                        position: 'inside',
+		                        backgroundColor: '#fff',
+		                        color: '#333'
 		                    },
 		                    emphasis: {
 		                        show: true
 		                    }
 		                },
-		                data:data
+		                data:data_tmp
 		            }]
 		        };
 				mapChart.setOption(mapOption);
@@ -96,10 +127,10 @@ function renderBar(data){
 	        }
 	    },
 	    grid:{
-	    	left : '10%',
+	    	left : '7%',
 	        right:"10%",
-	        top : '12%',
-	        bottom : '12%',
+	        top : '5%',
+	        bottom : '2%',
 	        containLabel: true
 	    },
 	    xAxis: {
@@ -119,13 +150,22 @@ function renderBar(data){
             barWidth: '45%',
             itemStyle: {
             	normal: {
-            		barBorderRadius: 2
+            		barBorderRadius: 2,
+            		color: function(params) {
+                		var data = params.data;
+                        var rate = (data.value/data.upper_limit*100).toFixed(2);
+						if(rate<=80){
+							return myColor[0];
+						}else if(rate > 80 && rate < 90){
+							return myColor[1];
+						}else{return myColor[2]}   
+                    }
             	}
             },
             label: {
                 normal: {
                     show: true,
-                    position: "insideRight",
+                    position: "right",
                     formatter: '{c}G'
                 }
             },
@@ -140,7 +180,6 @@ function renderLine(){
 		dataType:"json",
 		url:"overview.php?action=ajax_line",
 		success: function(data){
-			console.info(data);
 			if(data){
 				var series = [];
 				for(var key in data.datas){
@@ -154,7 +193,17 @@ function renderLine(){
 				}
 				var lineOption = {
 				    tooltip: {
-				        trigger: 'axis'
+				        trigger: 'axis',
+				        formatter:function(params){
+				        	params.sort(compare("value"));
+					        var html = params[0].name;
+							for(var i=0;i<params.length;i++){
+								html += ("<br/>" + params[i].seriesName + ": " + params[i].value + "G");
+// 								html += ("<br/><span style='color:"+params[i].color+"'>" 
+// 											+ params[i].seriesName + ": " + params[i].value + "G</span>");
+							}
+							return html;
+						}
 				    },
 				    legend: {
 						show:true
@@ -199,6 +248,22 @@ function renderLine(){
 		}
 	});
 	
+}
+
+function compare(propertyName) {
+    return function(object1, object2) {
+        var value1 = object1[propertyName];
+        var value2 = object2[propertyName];
+        value1 = parseFloat(value1);
+        value2 = parseFloat(value2);
+        if(value2 < value1) {
+            return -1;
+        } else if(value2 > value1) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 }
 
 </script>
