@@ -23,21 +23,27 @@ $local_datas = db_fetch_assoc("select po.local_graph_id,dl.id as local_data_id,r
 
 
 $d = strtotime(date('Y-m-d',time()));
-//$d = strtotime("2019-11-13");
-if (cacti_sizeof($local_datas)) {
-    foreach($local_datas as $local_data) {
-        $save = array();
-        $save["value"] = get_graph_max_traffic_value($local_data["local_graph_id"],$d-86400,$d);
-        // 如果上一天有数据，先删除，确保每天直插入一天.
-        $insert_time = date('Y-m-d H:i:s', $d-86400);
-        db_execute_prepared("delete from plugin_overview_history where local_graph_id = ? and insert_time = ?",
-            array($local_data["local_graph_id"],$insert_time));
-        $save["local_graph_id"] = $local_data["local_graph_id"];
-        $save["local_data_id"] = $local_data["local_data_id"];
-        $save["insert_time"] = $insert_time;
-        $save["title_cache"] = $local_data["title_cache"];
-        $save["region_name"] = $local_data["region_name"];
-        $save["region_code"] = $local_data["region_code"];
-        sql_save($save, 'plugin_overview_history');
-    }
-}
+
+// rrdtool_function_xport 和 rrdtool_function_fetch 对比
+$graph_data_array = array("graph_start"=>$d-86400,"graph_end"=>$d,"export_csv"=>true);
+$xport_meta = array();
+//聚合图形获取数据
+$xport_array = rrdtool_function_xport("471", 0, $graph_data_array, $xport_meta);
+print_r("rrdtool_function_xport=======");
+print_r($xport_array);
+
+$result = rrdtool_function_fetch("517", $d-86400, $d, 60);
+print_r("rrdtool_function_fetch=======");
+print_r($result);
+
+// $all = get_graph_traffic_values("471",1573636200,1573636500);
+// print_r("all=======");
+// print_r($all);
+
+// $ref_values = ov_get_ref_value("517", 1573636500,60);
+
+// print_r("ref_values=======");
+// print_r($ref_values);
+
+$max = get_graph_max_traffic_value("536",$d-86400,$d);
+print_r("max=======" . $max);

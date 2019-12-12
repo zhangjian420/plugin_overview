@@ -30,8 +30,6 @@ function plugin_overview_version() {
 }
 
 function plugin_overview_install() {
-    api_plugin_register_hook('overview', 'config_arrays', 'overview_config_arrays', 'setup.php');
-    
     /* core plugin functionality */
     api_plugin_register_hook('overview', 'top_header_tabs', 'overview_show_tab', 'setup.php');
     api_plugin_register_hook('overview', 'top_graph_header_tabs', 'overview_show_tab', 'setup.php');
@@ -43,6 +41,7 @@ function plugin_overview_install() {
 	api_plugin_register_hook('overview', 'page_head', 'overview_page_head', 'setup.php');
 	
 	api_plugin_register_realm('overview', 'overview.php', '监控大屏', 1);
+	api_plugin_register_realm('overview', 'overview_cfg.php', '大屏配置', 1);
 	api_plugin_register_realm('overview', 'region.php', '地域管理', 1);
 
 	overview_setup_database();
@@ -75,14 +74,16 @@ function plugin_overview_upgrade() {
 
 function overview_config_arrays() {
 	global $menu;
-	$menu[__('Management')]['plugins/overview/overview.php?action=edit'] = "大屏配置";
+	$menu[__('Management')]['plugins/overview/overview_cfg.php'] = "大屏配置";
 	$menu[__('Management')]['plugins/overview/region.php'] = "地域配置";
 }
 
 function overview_draw_navigation_text ($nav) {
 	$nav['overview.php:'] = array('title' => "监控大屏", 'mapping' => '', 'url' => 'overview.php', 'level' => '1');
 	$nav['overview.php:edit'] = array('title' => "监控大屏编辑", 'mapping' => 'index.php:', 'url' => 'overview.php', 'level' => '2');
-	$nav['region.php:'] = array('title' => "地域管理", 'mapping' => '', 'url' => 'region.php', 'level' => '1');
+	$nav['region.php:'] = array('title' => "地域管理", 'mapping' => 'index.php:', 'url' => 'region.php', 'level' => '1');
+	
+	$nav['overview_cfg.php:'] = array('title' => "大屏配置", 'mapping' => 'index.php:', 'url' => 'overview_cfg.php', 'level' => '1');
 	return $nav;
 }
 

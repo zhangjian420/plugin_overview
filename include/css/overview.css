@@ -3,9 +3,13 @@
 }
 .citygraphs-btn{margin-left: 10px;margin-top: -1px;}
 
-.ov-row{width: 100%;}
+.ov-row{width: 100%;position: relative;}
+.ov-tj{position: absolute;top: 10px;left: 20px;border: 1px solid #ccc;cursor: pointer;z-index: 999}
+.ov-tj .tj-title{font-size: 14px;font-weight: 600;background: #2C9A42;padding: 5px;text-align: center;color: #fff;}
+.ov-tj .tj-con{font-size: 20px;padding: 10px}
 .ov-left{float: left; width: 65%}
 .ov-right{float: right;width: 35%}
 .ov-clearfix{clear: both;}
 #ov_map,#ov_bar{height: 400px}
 #ov_line{height: 250px}
+#tj_line{height: 250px;width: 1000px;}

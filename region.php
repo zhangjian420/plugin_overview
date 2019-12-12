@@ -59,7 +59,7 @@ function regions(){
             $data["state"]["opened"] = true;
         }
     }
-    cacti_log(json_encode($region_arr));
+    //cacti_log(json_encode($region_arr));
     ?>
 <div class="formRow cityGraph">
 	<div class="formColumnLeft" style="width: 30%">

@@ -1,38 +1,115 @@
 <?php
+// 地市
+$city_regions = db_fetch_assoc("select * from region where level = 1 order by `code`");
+$dis_regions = db_fetch_assoc("select * from region where pcode = $system_region order by `code`");
 ?>
+<style>
+    .ui-dialog-titlebar{background:#2C9A42;color: #fff}
+</style>
+<div class="ov-row" id="ov_srch">
+	<div class="spacer formHeader" id="row_spacer1" style="float: none;">
+		<div class="formHeaderText">全省流量汇总图<div class="formHeaderAnchor" onclick="toggCol(this)">
+			<i class="fa fa-angle-double-down"></i></div>
+		</div>
+	</div>
+	<div id="row_name" class="formRow odd" style="display: none">
+		<span style="margin-left: 20px">全省流量汇总图： </span>
+		<span>地市：<select name="city_region" id="city_region" <?php if($level == 1){?>disabled="disabled"<?php }?>>
+			<?php 
+			foreach ($city_regions as $region){
+			?>
+				<option value="<?php print $region["code"] ?>" <?php if($region["code"] == $system_region){?>selected="selected"<?php }?>><?php print $region["name"] ?></option>
+			<?php   
+			}
+			?>
+		</select></span>
+		<span>
+			区/县：<select name="dis_region" id="dis_region" <?php if($level == 0){?>disabled="disabled"<?php }?>>
+			<?php 
+			foreach ($dis_regions as $region){
+			?>
+				<option value="<?php print $region["code"] ?>"><?php print $region["name"] ?></option>
+			<?php   
+			}
+			?>
+		</select>
+		</span>
+		<span>
+			<input type="button" class="save ui-button ui-corner-all ui-widget" value="执行" onclick="runBtn()">
+		</span>
+	</div>
+</div>
 <div class="ov-row">
+	<div class="ov-tj" id="ov_tj">
+		<div class="tj-title">总流量</div>
+		<div class="tj-con" id="tj_con">0</div>
+	</div>
 	<div class="ov-left" id="ov_map">
 		显示地图
 	</div>
 	<div class="ov-right" id="ov_bar">
 		显示柱形图
 	</div>
+    <div class="ov-clearfix"></div>
 </div>
-<div class="ov-clearfix"></div>
 <div class="ov-row" id="ov_line">
 	显示曲线图
 </div>
+<div id="tj_dialog" title="近30日总流量趋势图">
+	<div id="tj_line">
+		
+	</div>
+</div>
 <script>
-var mapChart,barChart,lineChart,myColor=["#2c9a42","#d08a00","#c23c33"];
+var mapChart,barChart,lineChart,tjLineChart,myColor=["#2c9a42","#d08a00","#c23c33"],data_tmp = [];
 $(function(){
+	$("#tj_dialog").dialog({
+		autoOpen: false,
+		modal: true,
+		width:"auto",
+		buttons: {
+	        "确定": function() {
+				$( this ).dialog( "close" );
+				//$("#tj_line").empty();
+			}
+		}
+    });
+
+    $("#ov_tj").on( "click", function() {
+    	$( "#tj_dialog" ).dialog( "open" );
+    });
+	
 	//初始化echarts实例
     mapChart = echarts.init(document.getElementById('ov_map'));
     barChart = echarts.init(document.getElementById('ov_bar'));
     lineChart = echarts.init(document.getElementById('ov_line'));
+    tjLineChart = echarts.init(document.getElementById('tj_line'));
 
     setInterval(function(){
 		renderMap();
     },13000);
     setInterval(function(){
     	renderLine();
+    	renderTjLine();
     },14400000);
 
-    $.getJSON("./include/js/420000.geoJson", function(geoJson) {
+    $.getJSON("./include/js/<?php print $system_region?>.geoJson", function(geoJson) {
 		echarts.registerMap('hubei', geoJson);
     });
 	
 	renderMap();
 	renderLine();
+	renderTjLine();
+
+	mapChart.on('click', function(params){
+		var data = params.data;
+		if(data.url && data.url.length > 10){
+			window.open(data.url);
+		}else{
+			alert("["+data.name+"]没有配置子系统，请核实！");
+		}
+	});
+
 });
 
 function renderMap(){
@@ -41,15 +118,21 @@ function renderMap(){
 		url:"overview.php?action=ajax_map",
 		success: function(data){
 			if(data && data.length > 0){
-				var data_tmp = [];
+				var tj = data.pop();
+                if(tj != 0){
+                	$("#tj_con").text(tj+"G");
+                }
+                data_tmp = [];
 				for(var i=0;i<data.length;i++){
 					data_tmp.push({
 						name:data[i].name,
 						value:(data[i].value/data[i].upper_limit*100).toFixed(2),
-						traffic:data[i].value
+						traffic:data[i].value,
+						code:data[i].code,
+						url:data[i].url
 					});
 				}
-				// 湖北地图
+				// 湖北省或者地市地图
 				var mapOption = {
 					title:{
 						text:"全省宽带业务流量监控大屏",
@@ -105,7 +188,6 @@ function renderMap(){
 		            }]
 		        };
 				mapChart.setOption(mapOption);
-
 				renderBar(data);
 			}
 		}
@@ -159,7 +241,9 @@ function renderBar(data){
 						}else if(rate > 80 && rate < 90){
 							return myColor[1];
 						}else{return myColor[2]}   
-                    }
+                    },
+                    shadowBlur: 15,
+                    shadowColor: 'rgba(40, 40, 40, 0.5)'
             	}
             },
             label: {
@@ -247,6 +331,66 @@ function renderLine(){
 			}
 		}
 	});
+}
+
+function renderTjLine(){
+	$.ajax({
+		dataType:"json",
+		url:"overview.php?action=ajax_tj_line",
+		success: function(data){
+			if(data){
+				var lineOption = {
+					tooltip: {
+				        trigger: 'axis',
+				        formatter:"{b0}<br>{c0}G"
+				    },
+				    legend: {
+						show:true
+				    },
+				    grid : {
+				        left : '5%',
+				        right:"5%",
+				        top : '12%',
+				        bottom : '12%'
+				    },
+				    xAxis: {
+				        type: 'category',
+				        boundaryGap: false,
+				        data: data.times,
+				        axisLabel: {
+				            show: true,
+				            textStyle: {
+				                color: '#666'
+				            }
+				        }
+				    },
+				    yAxis: {
+				        type: 'value',
+				        axisLine: {
+				            show: false
+				        },
+				        splitLine: {
+				            lineStyle: {
+				                type: 'dashed',
+				                color: '#DDD'
+				            }
+				        },
+				        axisLabel: {
+				            color: '#666',
+				            formatter: '{value}G',
+				        }
+				    },
+				    series: [{
+			            smooth:true, //平滑
+			            symbol:'circle',
+			            type:'line',
+			            data:data.datas
+					}]
+				};
+				tjLineChart.setOption(lineOption);
+			}
+		}
+	});
 	
 }
 
@@ -264,6 +408,40 @@ function compare(propertyName) {
             return 0;
         }
     }
+}
+
+function toggCol(me){
+	var icls = $(me).find("i");
+	if(icls.hasClass("fa-angle-double-up")){
+		$("#row_name").hide();
+		icls.removeClass('fa-angle-double-up').addClass('fa-angle-double-down');		
+	}else{
+		$("#row_name").show();
+		icls.removeClass('fa-angle-double-down').addClass('fa-angle-double-up');		
+	}	
+}
+
+function runBtn(){
+	<?php if($level == 0){
+	?>
+	var cityRegion = $("#city_region").val();
+	<?php     
+	}?>
+	<?php if($level == 1){
+	?>
+	var cityRegion = $("#dis_region").val();
+	<?php     
+	}?>
+	for(var i=0;i<data_tmp.length;i++){
+		var code = data_tmp[i].code;
+		if(cityRegion == code){
+			if(data_tmp[i].url && data_tmp[i].url.length > 10){
+				window.open(data_tmp[i].url);
+			}else{
+				alert("地市["+data_tmp[i].name+"]没有配置子系统，请核实！");
+			}
+		}
+	}
 }
 
 </script>

@@ -2,7 +2,8 @@
 
 // 获取数据源
 function get_local_data(){
-    $local_datas = db_fetch_assoc("select po.local_graph_id,gtg.upper_limit,dl.id as local_data_id,po.region_code,r.name 
+    $local_datas = db_fetch_assoc("select po.total_local_graph_id,po.local_graph_id,
+            gtg.upper_limit,gtg.title_cache,dl.id as local_data_id,po.region_code,r.name,po.region_url 
             from plugin_overview po left join region r on po.region_code = r.code
             left join graph_templates_graph gtg on po.local_graph_id = gtg.local_graph_id
             left join graph_local gl on po.local_graph_id = gl.id
@@ -12,40 +13,56 @@ function get_local_data(){
 }
 
 /**
- * 返回的格式： 单位是 bit
- * array(
-        "traffic" => value1,
-        "unit" => 
-    );
+ * 根据图形ID获取一段时间内的流量数据，返回这段时间内 按照图形间隔 的每次流量值（出口或者入口流量，谁大取谁）
+ * @param String $local_graph_id
+ * @param int $start_time
+ * @param int $end_time
  * @return number[]
  */
-function ov_get_ref_value($local_data, $ref_time, $time_range,$alarm_mod = 0.9){
-    if (empty($local_data["local_data_id"])) {
-        return array();
+function get_graph_traffic_values($local_graph_id,$start_time,$end_time){
+    $graph_data_array = array("graph_start"=>$start_time,"graph_end"=>$end_time,"export_csv"=>true);
+    $xport_meta = array();
+    // 聚合图形获取数据
+    $xport_array = rrdtool_function_xport($local_graph_id, 0, $graph_data_array, $xport_meta);
+    $ret = array();
+    if (!empty($xport_array["data"])) {
+        foreach ($xport_array["data"] as $data){
+            $traffic = max(array_values($data));
+            if(!empty($traffic)){
+                $ret[] = round($traffic/1000000000,2);
+            }
+        }
     }
-    $result = rrdtool_function_fetch($local_data["local_data_id"], $ref_time-$time_range, $ref_time-1, $time_range); // 单位是字节，返回时要转行成bit
-//     cacti_log("result = " .json_encode($result));
-    $idx_in = array_search("traffic_in", $result['data_source_names']);
-    $idx_out = array_search("traffic_out", $result['data_source_names']);
-//     cacti_log("idx_in = " .json_encode($idx_in) .",idx_out = " .json_encode($idx_out));
-//     cacti_log("idx_in_v = " .json_encode($result['values'][$idx_in]) .",idx_out_v = " .json_encode($result['values'][$idx_out]));
-//     cacti_log("idx_in_max = " .json_encode(max($result['values'][$idx_in])) .",idx_out_v = " .json_encode(max($result['values'][$idx_out])));
-    
-    if (!isset($result['values'][$idx_in]) || count($result['values'][$idx_in]) == 0) {
-        $iv = 0;
-    }else {
-        $iv = max($result['values'][$idx_in]) * 8;
-    }
-    if (!isset($result['values'][$idx_out]) || count($result['values'][$idx_out]) == 0) {
-        $ov = 0;
-    }else{
-        $ov = max($result['values'][$idx_out]) * 8;
-    }
-    
-    if($iv == 0 && $ov == 0){
-        return array();
-    }
-    
-    return array("traffic"=>$iv > $ov ? $iv : $ov);
+    return $ret;
 }
+
+/**
+ * 获取 图形一段时间内最大的流量值，没有获取到返回0
+ * @param String $local_graph_id
+ * @param int $start_time
+ * @param int $end_time
+ * @return number|mixed
+ */
+function get_graph_max_traffic_value($local_graph_id,$start_time,$end_time){
+    $datas  = get_graph_traffic_values($local_graph_id,$start_time,$end_time);
+    if (empty($datas)) {
+        return 0;
+    }
+    return max($datas);
+}
+
+/**
+ *  获取 图形 的最新值，没有获取到返回0
+ * @param String $local_graph_id
+ * @return number|mixed
+ */
+function get_graph_new_traffic_value($local_graph_id){
+    $d = strtotime(date('Y-m-d H:i',time()))-60;
+    $datas  = get_graph_traffic_values($local_graph_id,$d-60,$d);
+    if (empty($datas)) {
+        return 0;
+    }
+    return end($datas);
+}
+
 
