@@ -13,7 +13,7 @@ function get_local_data(){
 }
 
 /**
- * 根据图形ID获取一段时间内的流量数据，返回这段时间内 按照图形间隔 的每次流量值（出口或者入口流量，谁大取谁）
+ * 根据图形ID获取一段时间内的流量数据，返回这段时间内 按照图形间隔 的每次流量值（出口或者入口流量，谁大取谁），流量单位是G
  * @param String $local_graph_id
  * @param int $start_time
  * @param int $end_time
