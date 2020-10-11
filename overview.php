@@ -76,7 +76,7 @@ function ajax_map(){
         foreach($local_datas as $local_data) {
             $total_local_graph_id = $local_data["total_local_graph_id"];
             //$traffic_value = ov_get_traffic_value($local_data["local_graph_id"],$local_data["local_data_id"],$graph_data_array,$xport_meta,$d);
-            $traffic_value = get_graph_new_traffic_value($local_data["local_graph_id"]);
+            $traffic_value = get_graph_new_traffic_value($local_data["local_graph_id"],300);
             if(!empty($traffic_value)){
                 $ret[] = array("value"=>$traffic_value,"name"=>$local_data["name"],
                     "code"=>$local_data["region_code"],"url"=>$local_data["region_url"],

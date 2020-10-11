@@ -56,9 +56,9 @@ function get_graph_max_traffic_value($local_graph_id,$start_time,$end_time){
  * @param String $local_graph_id
  * @return number|mixed
  */
-function get_graph_new_traffic_value($local_graph_id){
-    $d = strtotime(date('Y-m-d H:i',time()))-60;
-    $datas  = get_graph_traffic_values($local_graph_id,$d-60,$d);
+function get_graph_new_traffic_value($local_graph_id,$step=60){
+    $d = strtotime(date('Y-m-d H:i',time()))-$step;
+    $datas  = get_graph_traffic_values($local_graph_id,$d-$step,$d);
     if (empty($datas)) {
         return 0;
     }
